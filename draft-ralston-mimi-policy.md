@@ -101,7 +101,7 @@ that. The encryption/security layer MAY further restrict a user's ability to
 take action. For example, the user might need 1 or more clients to be able to
 successfully send a message.
 
-## Participation
+## Participation Definitions
 
 *Target*: The user affected by a participation state.
 
