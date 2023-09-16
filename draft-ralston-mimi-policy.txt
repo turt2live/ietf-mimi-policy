@@ -70,7 +70,7 @@ Table of Contents
 
    1.  Introduction
    2.  Conventions and Definitions
-     2.1.  Participation
+     2.1.  Participation Definitions
    3.  User Participation
    4.  TODO Sections
    5.  Security Considerations
@@ -142,7 +142,7 @@ Table of Contents
    might need 1 or more clients to be able to successfully send a
    message.
 
-2.1.  Participation
+2.1.  Participation Definitions
 
    _Target_: The user affected by a participation state.
 
