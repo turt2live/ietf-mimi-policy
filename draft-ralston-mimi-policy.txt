@@ -1,0 +1,254 @@
+
+
+
+
+More Instant Messaging Interoperability                       T. Ralston
+Internet-Draft                                                M. Hodgson
+Intended status: Standards Track        The Matrix.org Foundation C.I.C.
+Expires: 19 March 2024                                 16 September 2023
+
+
+                          MIMI Policy Envelope
+                    draft-ralston-mimi-policy-latest
+
+Abstract
+
+   The MIMI Policy Envelope is the initial set of permissions and
+   capabilities for users to make use of in a room.  This policy is made
+   enforceable through a separate _policy control protocol_, as
+   described by [I-D.barnes-mimi-arch].
+
+About This Document
+
+   This note is to be removed before publishing as an RFC.
+
+   The latest revision of this draft can be found at
+   https://turt2live.github.io/ietf-mimi-policy/draft-ralston-mimi-
+   policy.html.  Status information for this document may be found at
+   https://datatracker.ietf.org/doc/draft-ralston-mimi-policy/.
+
+   Discussion of this document takes place on the More Instant Messaging
+   Interoperability Working Group mailing list (mailto:mimi@ietf.org),
+   which is archived at https://mailarchive.ietf.org/arch/browse/mimi/.
+   Subscribe at https://www.ietf.org/mailman/listinfo/mimi/.
+
+   Source for this draft and an issue tracker can be found at
+   https://github.com/turt2live/ietf-mimi-policy.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 19 March 2024.
+
+Copyright Notice
+
+   Copyright (c) 2023 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction
+   2.  Conventions and Definitions
+     2.1.  Participation
+   3.  User Participation
+   4.  TODO Sections
+   5.  Security Considerations
+   6.  IANA Considerations
+   7.  References
+     7.1.  Normative References
+     7.2.  Informative References
+   Acknowledgments
+   Authors' Addresses
+
+1.  Introduction
+
+   The primary objective for the More Instant Messaging Interoperability
+   (MIMI) working group is to specify the needed protocols to achieve
+   interoperability among modern messaging providers.  The protocols
+   which make up the "MIMI stack" are described by
+   [I-D.barnes-mimi-arch].
+
+   One of those protocols, the _policy control protocol_, outlines how a
+   policy envelope is described, shared, and configured. *I-
+   D.TODO.ralston-mimi-signaling* describes such a protocol.  This
+   policy document is described in context of that signaling document.
+
+   This policy document outlines the permissions and capabilities of
+   users.  For example, which users are allowed to invite others to a
+   room or which types of messages a given user can send.
+
+   When an action is impossible for a server to enforce, such as when a
+   client operated by a user sends an encrypted instant message, the
+   receiving clients are responsible for enforcing the remainder of the
+   policy.  This may mean, for example, decrypting a message but not
+   rendering it due to a policy violation.
+
+   The concepts of permissions and participation state for a user are
+   deliberately separated in this policy document.  A user's
+   participation state might affect which permissions they can use, but
+   a user's permissions do not change their participation in a room.
+
+2.  Conventions and Definitions
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in
+   BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   Terms from [I-D.barnes-mimi-arch] and [I-D.ralston-mimi-terminology]
+   are used throughout this document.  [I-D.barnes-mimi-arch] takes
+   precedence where there's conflict.
+
+   Other terms include:
+
+   _Action_: Something a user does in the context of a room.  For
+   example, invite another user or send a message to the room.
+
+   _Rejected_: The action being performed ceases to continue through the
+   remainder of the send/rendering steps.  For a hub server, this means
+   the event being sent is not added to the room and is not sent to any
+   other server.  For a client, this equates to not rendering or
+   respecting the action.
+
+   _Allowed_: The opposite of Rejected.  The action is expressly
+   permitted to occur.
+
+   _"Engaging with the room"_: The user is able to take some actions and
+   send messages in the room, provided the remainder of the policy
+   allows them to do that.  The encryption/security layer MAY further
+   restrict a user's ability to take action.  For example, the user
+   might need 1 or more clients to be able to successfully send a
+   message.
+
+2.1.  Participation
+
+   _Target_: The user affected by a participation state.
+
+   _Sender_: The user affecting a target user with a participation
+   state.
+
+   _Invited_: The target is given the choice to accept the invite (join
+   the room) or decline (leave the room).
+
+   _Joined_: The target is capable of engaging with the room.
+
+   _Left_: The target has either voluntarily chosen to leave the room,
+   or has been removed with a kick.
+
+   _Banned_: The target is kicked and cannot be invited, joined, or
+   knock on the room until unbanned.
+
+   _Knocking_: The sender is requesting an invite into the room.  They
+   can either be welcomed in (invited) or declined (kicked).
+
+   _Kicked_: Involuntary leave.  The target and sender are not the same
+   user.
+
+3.  User Participation
+
+   User participation is tracked as m.user state events in a room.  The
+   content for such an event has the following structure in TLS
+   presentation language format (Section 3 of [RFC8446]):
+
+   enum {
+      invite,  // "Invited" state.
+      join,    // "Joined" state.
+      leave,   // "Left" state (including Kicked).
+      ban,     // "Banned" state.
+      knock    // "Knocking" state.
+   } ParticipationState;
+
+   struct {
+      ParticipationState participation;
+      opaque reason;  // optional reason for the participation state
+   } MUserContent;
+
+   *TODO(TR): Continue describing legal participation state transitions.
+   Maybe introduce join rules here?*
+
+4.  TODO Sections
+
+   *  History visibility
+
+   *  Join rules (if not covered above)
+
+   *  RBAC using MSC4056
+
+   *  ???
+
+5.  Security Considerations
+
+   TODO Security
+
+6.  IANA Considerations
+
+   This document has no IANA actions.
+
+7.  References
+
+7.1.  Normative References
+
+   [I-D.barnes-mimi-arch]
+              Barnes, R., "An Architecture for More Instant Messaging
+              Interoperability (MIMI)", Work in Progress, Internet-
+              Draft, draft-barnes-mimi-arch-00, 29 August 2023,
+              <https://datatracker.ietf.org/doc/html/draft-barnes-mimi-
+              arch-00>.
+
+   [I-D.ralston-mimi-terminology]
+              Ralston, T., "MIMI Terminology", Work in Progress,
+              Internet-Draft, draft-ralston-mimi-terminology-02, 10 July
+              2023, <https://datatracker.ietf.org/doc/html/draft-
+              ralston-mimi-terminology-02>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
+
+7.2.  Informative References
+
+   [RFC8446]  Rescorla, E., "The Transport Layer Security (TLS) Protocol
+              Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018,
+              <https://www.rfc-editor.org/rfc/rfc8446>.
+
+Acknowledgments
+
+   TODO acknowledge.
+
+Authors' Addresses
+
+   Travis Ralston
+   The Matrix.org Foundation C.I.C.
+   Email: travisr@matrix.org
+
+
+   Matthew Hodgson
+   The Matrix.org Foundation C.I.C.
+   Email: matthew@matrix.org
