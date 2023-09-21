@@ -459,7 +459,7 @@ When the target and sender of a leave is the same, it is a voluntary leave.
 
 ### Voluntary
 
-The user MUST NOT be in the banned, invited, joined, or knocking state.
+The user MUST be in the invited, joined, or knocking state.
 
 Otherwise, reject.
 
