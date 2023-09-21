@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2023-09-19T00:18:20.826075+00:00",
+  "timestamp": "2023-09-21T00:18:00.076546+00:00",
   "repo": "turt2live/ietf-mimi-policy",
   "labels": [
     {
@@ -49,6 +49,39 @@
       "color": "ffffff"
     }
   ],
-  "issues": [],
+  "issues": [
+    {
+      "number": 1,
+      "id": "I_kwDOKULecs5xmShm",
+      "title": "Restricted joins?",
+      "url": "https://github.com/turt2live/ietf-mimi-policy/issues/1",
+      "state": "OPEN",
+      "author": "turt2live",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2023-09-20T23:57:15Z",
+      "updatedAt": "2023-09-20T23:57:15Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 2,
+      "id": "I_kwDOKULecs5xmVRD",
+      "title": "Non-user senders?",
+      "url": "https://github.com/turt2live/ietf-mimi-policy/issues/2",
+      "state": "OPEN",
+      "author": "turt2live",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "per https://github.com/matrix-org/matrix-spec-proposals/pull/4049",
+      "createdAt": "2023-09-21T00:14:44Z",
+      "updatedAt": "2023-09-21T00:14:44Z",
+      "closedAt": null,
+      "comments": []
+    }
+  ],
   "pulls": []
 }
