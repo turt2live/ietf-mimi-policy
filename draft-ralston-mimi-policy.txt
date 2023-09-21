@@ -545,8 +545,7 @@ struct {
 
 6.6.1.  Voluntary
 
-   The user MUST NOT be in the banned, invited, joined, or knocking
-   state.
+   The user MUST be in the invited, joined, or knocking state.
 
    Otherwise, reject.
 
