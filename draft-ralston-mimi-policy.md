@@ -42,9 +42,9 @@ informative:
 
 --- abstract
 
-The MIMI Policy Envelope is the initial set of permissions and capabilities for
-users to make use of in a room. This policy is made enforceable through a
-separate *policy control protocol*, as described by {{!I-D.barnes-mimi-arch}}.
+The MIMI Policy Envelope describes a *policy control protocol* and
+*participation control protocol* for use in a room, applied at the user
+participation level, as described by {{!I-D.barnes-mimi-arch}}.
 
 
 --- middle
@@ -56,14 +56,13 @@ working group is to specify the needed protocols to achieve interoperability
 among modern messaging providers. The protocols which make up the "MIMI stack"
 are described by {{!I-D.barnes-mimi-arch}}.
 
-One of those protocols, the *policy control protocol*, outlines how a policy
-envelope is described, shared, and configured. **I-D.TODO.ralston-mimi-signaling**
-describes such a protocol. This policy document is described in context of
-that signaling document.
+In the stack are a policy control protocol and a participation control protocol.
+These two control protocols are described by this document, supported by
+**TODO(TR): Link to I-D.ralston-mimi-signaling**.
 
-This policy document outlines the permissions and capabilities of users. For
-example, which users are allowed to invite others to a room or which types of
-messages a given user can send.
+Policy control is handled through permissions, while participation is managed
+primarily through the rules governing `m.room.user`. Together, these control
+protocols create this policy document.
 
 When an action is impossible for a server to enforce, such as when a client
 operated by a user sends an encrypted instant message, the receiving clients
@@ -83,10 +82,10 @@ Terms from {{!I-D.barnes-mimi-arch}} and {{!I-D.ralston-mimi-terminology}} are
 used throughout this document. {{!I-D.barnes-mimi-arch}} takes precedence where
 there's conflict.
 
-Other terms include:
+Terms from **TODO(TR): Link to I-D.ralston-mimi-signaling** are used throughout
+this document.
 
-*Action*: Something a user does in the context of a room. For example, invite
-another user or send a message to the room.
+Other terms include:
 
 *Rejected*: The action being performed ceases to continue through the remainder
 of the send/rendering steps. For a hub server, this means the event being sent
@@ -100,6 +99,16 @@ messages in the room, provided the remainder of the policy allows them to do
 that. The encryption/security layer MAY further restrict a user's ability to
 take action. For example, the user might need 1 or more clients to be able to
 successfully send a message.
+
+## Permissions Definitions
+
+*Action*: Something a user does in the context of a room. For example, invite
+another user or send a message to the room.
+
+*Permission*: A flag which allows (or rejects) execution of an action.
+
+*Role*: A user-defined set of permissions. Users are added to roles to gain the
+included permissions.
 
 ## Participation Definitions
 
@@ -123,11 +132,205 @@ be welcomed in (invited) or declined (kicked).
 
 *Kicked*: Involuntary leave. The target and sender are not the same user.
 
+# Event Authorization
+
+When a hub server receives an event, and before it adds it to the room, it MUST
+ensure the event passes the policy for the room. In the case of this document,
+the server MUST ensure the following checks are performed:
+
+1. The event is correctly signed and hashed.
+2. The event's `authEvents` include the appropriate event types
+   ({{int-auth-selection}}).
+3. The `sender` has permission ({{int-calc-permissions}}) to send the event.
+4. Any event type-specific checks are performed, as described throughout this
+   document.
+
+## Auth Events Selection {#int-auth-selection}
+
+When a server is populating `authEvents`, it MUST include the event IDs for the
+following event types. These SHOULD be the most recent event IDs for the event
+types.
+
+Note: `m.room.create` MUST always have an empty `authEvents` array.
+
+* The `m.room.create` event.
+* The `m.room.user` event for the `sender`, if applicable.
+* The `m.room.role_map` event ({{int-permissions}}), if set.
+* The `m.room.role` events ({{int-permissions}}) assigned to the user `sender`,
+  if any.
+* If the event type is `m.room.user`:
+
+   * The target user's `m.room.user` event, if any.
+   * If the `participation` state is `join` or `invite`, the `m.room.join_rules`
+     event ({{int-ev-join-rules}}), if any.
+
+**TODO(TR): Restricted joins join_authorised_via_users_server?
+[[GH issue](https://github.com/turt2live/ietf-mimi-policy/issues/1)]**
+
+If an event is missing from `authEvents` but should have been included with the
+above selection algorithm, the event is rejected.
+
+If events not intended to be selected using the above algorithm above are
+included in `authEvents`, the event is rejected. This extends to events which
+aren't known or are malformed in `authEvents`.
+
+If an event uses non-current events in its `authEvents`, it is rejected.
+
+# Types of Senders
+
+**TODO(TR): Do we want to send as not-users?
+[[GH issue](https://github.com/turt2live/ietf-mimi-policy/issues/2)]**
+
+Currently this document only supports `sender` being a user ID.
+
+# Permissions {#int-permissions}
+
+Rooms are capable of defining their own roles for grouping permissions to apply
+to users. These roles do not currently have aesthetic characteristics, such as
+a display name, badge color, or avatar.
+
+Roles are described by an `m.room.role` state event. The state key for the event
+is the "role ID", and is not intended to be human readable.
+
+The content for the event has the following structure in TLS presentation
+language format ({{Section 3 of RFC8446}}):
+
+~~~
+enum {
+   // Iterated later in the document.
+} Permission;
+
+struct {
+   select (Permission) {
+      // cases defined later in the document.
+   } permission;
+} PermissionValue;
+
+struct {
+   PermissionValue permissions[];
+} MRoomRoleEventContent;
+~~~
+
+Users are assigned to roles using an `m.room.role_map` state event, with empty
+string for a state key. The content being as follows:
+
+~~~
+struct {
+   // The role's ID.
+   opaque roleId;
+
+   // The user IDs who are assigned this role.
+   opaque userIds[];
+
+   // The power level for the role. This is used in cases of tiebreak and to
+   // override permissions from another role.
+   uint32 order;
+} RoleConfig;
+
+struct {
+   RoleConfig roles[];
+} MRoomRoleMapEventContent;
+~~~
+
+Each role ID MUST only appear once in `MRoomRoleMapEventContent.roles`. Each
+`RoleConfig.order` MUST be distinct from all other entries. If either of these
+checks fail when a server receives the event, the event is rejected.
+
+## Calculating Permissions {#int-calc-permissions}
+
+A user's permissions is the sum of the permissions described by their assigned
+roles. When two roles define the same permission (but with different values),
+the higher `order` role takes precedence.
+
+For example, if given the following role structure...
+
+* Role A, order 1.
+   * Permission A = true
+   * Permission B = false
+* Role B, order 2.
+   * Permission A = false
+   * Permission C = false
+* Role C, order 3.
+   * Permission B = true
+   * Permission C = false
+
+... and a user assigned all three roles, the user's resolved set of permissions
+would be:
+
+* Permission A = false (takes Role B's value)
+* Permission B = true (takes Role C's value)
+* Permission C = false (defined by Role B, no conflict with Role C)
+
+These permissions are then used to define whether a user can "send" the event.
+
+## List of Permissions
+
+The full definitions for `Permission` and `PermissionValue` in
+{{int-permissions}} is:
+
+~~~
+enum {
+   // Whether other users can be invited to the room by the role.
+   // Default: false.
+   invite(1),
+
+   // Whether other users can be kicked from the room by the role.
+   // Default: false.
+   kick(2),
+
+   // Whether other users can be banned from the room by the role.
+   // Default: false.
+   ban(3),
+
+   // Whether another user's events can be redacted by the role.
+   // Senders can always redact their own events regardless of this permission.
+   // Default: false.
+   redact(4), // TODO(TR): Do we need this one?
+
+   // The event types the role is able to send.
+   // Default: None.
+   events(5),
+
+   // The actions this role can take against roles. For example, adding or
+   // removing permissions.
+   // Default: None.
+   roles(6),
+} Permission;
+
+struct {
+   select (Permission) {
+      case invite: BooleanPermission;
+      case kick: BooleanPermission;
+      case ban: BooleanPermission;
+      case redact: BooleanPermission;
+      case events:
+   } permission;
+} PermissionValue;
+
+struct {
+   // When false, the permission is explicitly not granted.
+   byte granted;
+} BooleanPermission;
+
+struct {
+   // The event type being gated by a permission.
+   opaque eventType;
+
+   // When false, the permission to send the event is explicitly not granted.
+   byte granted;
+} EventTypePermissionRecord;
+
+struct {
+   // The event type restrictions.
+   EventTypePermissionRecord eventTypes[];
+} EventTypePermission;
+~~~
+
 # User Participation
 
-User participation is tracked as `m.user` state events in a room. The `content`
-for such an event has the following structure in TLS presentation language
-format ({{Section 3 of RFC8446}}):
+User participation is tracked as `m.room.user` state events. The `content` for
+such an event has the following structure in TLS presentation language format
+({{Section 3 of RFC8446}}):
 
 ~~~
 enum {
@@ -141,8 +344,10 @@ enum {
 struct {
    ParticipationState participation;
    opaque reason;  // optional reason for the participation state
-} MUserContent;
+} MRoomUserEventContent;
 ~~~
+
+
 
 **TODO(TR): Continue describing legal participation state transitions. Maybe introduce join rules here?**
 
@@ -160,8 +365,12 @@ TODO Security
 
 # IANA Considerations
 
-This document has no IANA actions.
+This document as a whole makes up the `m.0` policy ID, as per
+**TODO(TR): Link to I-D.ralston-mimi-signaling**.
 
+This document's descriptions for the `m.room.role` and `m.room.role_map` event
+types are registered to the event types registry in **TODO(TR): Link to
+I-D.ralston-mimi-signaling**.
 
 --- back
 
