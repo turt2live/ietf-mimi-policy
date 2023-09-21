@@ -165,7 +165,7 @@ Note: `m.room.create` MUST always have an empty `authEvents` array.
      event ({{int-ev-join-rules}}), if any.
 
 **TODO(TR): Restricted joins join_authorised_via_users_server?
-[[GH issue](https://github.com/turt2live/ietf-mimi-policy/issues/1)]**
+([GH issue](https://github.com/turt2live/ietf-mimi-policy/issues/1))**
 
 If an event is missing from `authEvents` but should have been included with the
 above selection algorithm, the event is rejected.
@@ -179,7 +179,7 @@ If an event uses non-current events in its `authEvents`, it is rejected.
 # Types of Senders
 
 **TODO(TR): Do we want to send as not-users?
-[[GH issue](https://github.com/turt2live/ietf-mimi-policy/issues/2)]**
+([GH issue](https://github.com/turt2live/ietf-mimi-policy/issues/2))**
 
 Currently this document only supports `sender` being a user ID.
 
@@ -263,6 +263,20 @@ would be:
 
 These permissions are then used to define whether a user can "send" the event.
 
+## Effective Power Level {#int-effective-power}
+
+In some cases it is required to know the "power level" for a user to solve
+tiebreaks. The power level of a user is the highest `order` role they are
+assigned with the desired permission set, regardless of value for that
+permission.
+
+Using the example from {{int-calc-permissions}}, a user with all three roles
+would have the following effective power levels for each permission in question:
+
+* Permission A = 2
+* Permission B = 3
+* Permission C = 3
+
 ## List of Permissions
 
 The full definitions for `Permission` and `PermissionValue` in
@@ -303,7 +317,8 @@ struct {
       case kick: BooleanPermission;
       case ban: BooleanPermission;
       case redact: BooleanPermission;
-      case events:
+      case events: EventTypePermission;
+      case roles: RolePermission;
    } permission;
 } PermissionValue;
 
@@ -321,12 +336,37 @@ struct {
 } EventTypePermissionRecord;
 
 struct {
-   // The event type restrictions.
+   // The event type restrictions. If there are duplicates, the lastmost entry
+   // takes priority.
    EventTypePermissionRecord eventTypes[];
 } EventTypePermission;
+
+struct {
+   // The role IDs that can be affected by this role. This includes adding,
+   // removing, and changing permissions.
+   // TODO(TR): We might want something more comprehensive.
+   opaque affectRoleId[];
+} RolePermission;
 ~~~
 
-# User Participation
+## Event Sending Permissions
+
+The `sender` for an event MUST have permission ({{int-calc-permissions}}) to
+send that event type, unless the event type is `m.room.user`. User participation
+events are handled specifically in {{int-user-participation}}.
+
+The `sender` MUST also be in the joined state to send such events.
+
+## Role Changes
+
+**TODO(TR): I believe we need words to describe how to use the role permissions
+described above. Probably something using effective power levels and talking
+about what "add", "remove", and "change" actually mean.**
+
+**TODO(TR): We also need to specify that the creator has superuser permissions
+until a role is defined/assigned.**
+
+# User Participation {#int-user-participation}
 
 User participation is tracked as `m.room.user` state events. The `content` for
 such an event has the following structure in TLS presentation language format
@@ -347,34 +387,186 @@ struct {
 } MRoomUserEventContent;
 ~~~
 
+A user is considered to be "joined" to a room if they have a participation state
+of `join`. All servers with users in the joined state are considered to be "in"
+the room.
 
+Servers which are in the room can send events for their users directly. The
+signaling protocol is able to assist servers (and therefore users) in sending
+the appropriate participation events until they are able complete the join
+process.
 
-**TODO(TR): Continue describing legal participation state transitions. Maybe introduce join rules here?**
+## General Conditions
 
-# TODO Sections
+**TODO(TR): This is where we'd put server ACLs.
+([GH issue](https://github.com/turt2live/ietf-mimi-policy/issues/3))**
 
-* History visibility
-* Join rules (if not covered above)
-* RBAC using MSC4056
-* ???
+## Invite Conditions
 
-# Security Considerations
+The target user for an invite MUST:
 
-TODO Security
+* NOT already be in the banned state.
+* NOT already be in the joined state.
 
+The sender for an invite MUST:
+
+* Already be in the joined state.
+* Have permission ({{int-calc-permissions}}) to invite users.
+
+Otherwise, reject.
+
+## Join Conditions
+
+The target and sender of a join MUST be the same.
+
+Whether a user can join without invite is dependent on the join rules
+({{int-ev-join-rules}}).
+
+If the join rule is `invite` or `knock`, the user MUST already be in the joined
+or invite state.
+
+If the join rule is `public`, the user MUST NOT already be in the banned state.
+
+Otherwise, reject.
+
+## Knock Conditions
+
+The target and sender of a knock MUST be the same.
+
+If the current join rule ({{int-ev-join-rules}}) for the room is `knock`, the
+user MUST NOT already be in the banned or joined state.
+
+Otherwise, reject.
+
+## Ban Conditions
+
+The sender for a ban MUST:
+
+* Already be in the joined state.
+* Have permission ({{int-calc-permissions}}) to ban users.
+
+Otherwise, reject.
+
+Note that a ban implies kick.
+
+## Leave Conditions
+
+Leaves in a room come in two varieties: voluntary and kicks. Voluntary leaves
+are when the user no longer wishes to be an active participant in the room. A
+kick is done to remove a user forcefully.
+
+When the target and sender of a leave is the same, it is a voluntary leave.
+
+### Voluntary
+
+The user MUST NOT be in the banned, invited, joined, or knocking state.
+
+Otherwise, reject.
+
+### Kicks
+
+The target user for a kick MUST:
+
+* Already be in the joined state.
+
+The sender for a kick MUST:
+
+* Already be in the joined state.
+* Have permission ({{int-calc-permissions}}) to kick users.
+* Have a higher (and NOT equal to) effective power level with respect to the
+  kick permission ({{int-effective-power}}) than the target user.
+
+If the target user is in the banned state, the sender requires permission to
+ban users instead (as to ban means to unban as well). This additionally extends
+to the effective power level check.
+
+Otherwise, reject.
+
+## `m.room.join_rules` {#int-ev-join-rules}
+
+**State key**: Empty string.
+
+**Content**:
+
+~~~
+enum {
+   invite,
+   knock,
+   public,
+} JoinRule;
+
+struct {
+  // The current join rule for the room. Defaults to `invite` if no join rules
+  // event is in the room.
+  JoinRule rule;
+} MRoomJoinRulesEventContent;
+~~~
+
+**Redaction considerations**: `rule` under `content` is protected from
+redaction.
+
+# Event/History Visibility
+
+Unless otherwise specified by the event type, non-state events MUST NOT be sent
+to a user's client if the history visibility rules prohibit it. State events
+are always visible to clients.
+
+When a server is fetching events it is missing to build history, the returned
+events are redacted unless the server has at least one user which is able to
+see the event under the history visibility rules. The server must then further
+filter the events before sending them to clients.
+
+History visibility rules are defined by `m.room.history_visibility`
+({{int-ev-history-viz}}), and can only affect future events. Events sent before
+the history visibility rule change are not retroactively affected.
+
+Taking into consideration the `m.room.history_visibility` event that is current
+at the time an event was sent, a user's visibility of a that event is described
+as:
+
+* If the visibility rule was `world`, show.
+* If the user was in the joined state, show.
+* If the visibility rule was `shared` and the user was in the joined state at
+  any point after the event was sent, show.
+* If the user was in the invited state, and the visibility rule was `invited`,
+  show.
+* Otherwise, don't show.
+
+## `m.room.history_visibility` {#int-ev-history-viz}
+
+**State key**: Empty string.
+
+**Content**:
+
+~~~
+enum {
+   invited,
+   joined,
+   shared,
+   world,
+} Visibility;
+
+struct {
+  // The current join rule for the room. Defaults to `shared` if no history
+  // visibility event is present in the room.
+  Visibility visibility;
+} MRoomHistoryVisibilityEventContent;
+~~~
+
+**Redaction considerations**: `visibility` under `content` is protected from
+redaction.
 
 # IANA Considerations
 
 This document as a whole makes up the `m.0` policy ID, as per
 **TODO(TR): Link to I-D.ralston-mimi-signaling**.
 
-This document's descriptions for the `m.room.role` and `m.room.role_map` event
-types are registered to the event types registry in **TODO(TR): Link to
-I-D.ralston-mimi-signaling**.
+This document's descriptions for the following event types are registered to the
+event types registry in **TODO(TR): Link to I-D.ralston-mimi-signaling**:
+
+* `m.room.role` ({{int-permissions}})
+* `m.room.role_map` ({{int-permissions}})
+* `m.room.join_rules` ({{int-ev-join-rules}})
+* `m.room.history_visibility` ({{int-ev-history-viz}})
 
 --- back
-
-# Acknowledgments
-{:numbered="false"}
-
-TODO acknowledge.
