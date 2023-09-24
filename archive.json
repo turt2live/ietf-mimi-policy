@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2023-09-21T00:18:00.076546+00:00",
+  "timestamp": "2023-09-24T00:19:25.174597+00:00",
   "repo": "turt2live/ietf-mimi-policy",
   "labels": [
     {
@@ -79,6 +79,22 @@
       "body": "per https://github.com/matrix-org/matrix-spec-proposals/pull/4049",
       "createdAt": "2023-09-21T00:14:44Z",
       "updatedAt": "2023-09-21T00:14:44Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 3,
+      "id": "I_kwDOKULecs5xnZ_c",
+      "title": "Server ACLs?",
+      "url": "https://github.com/turt2live/ietf-mimi-policy/issues/3",
+      "state": "OPEN",
+      "author": "turt2live",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2023-09-21T05:44:44Z",
+      "updatedAt": "2023-09-21T05:44:44Z",
       "closedAt": null,
       "comments": []
     }
