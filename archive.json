@@ -1,0 +1,103 @@
+{
+  "magic": "E!vIA5L86J2I",
+  "timestamp": "2023-12-21T00:19:22.652225+00:00",
+  "repo": "turt2live/ietf-mimi-policy",
+  "labels": [
+    {
+      "name": "bug",
+      "description": "Something isn't working",
+      "color": "d73a4a"
+    },
+    {
+      "name": "documentation",
+      "description": "Improvements or additions to documentation",
+      "color": "0075ca"
+    },
+    {
+      "name": "duplicate",
+      "description": "This issue or pull request already exists",
+      "color": "cfd3d7"
+    },
+    {
+      "name": "enhancement",
+      "description": "New feature or request",
+      "color": "a2eeef"
+    },
+    {
+      "name": "help wanted",
+      "description": "Extra attention is needed",
+      "color": "008672"
+    },
+    {
+      "name": "good first issue",
+      "description": "Good for newcomers",
+      "color": "7057ff"
+    },
+    {
+      "name": "invalid",
+      "description": "This doesn't seem right",
+      "color": "e4e669"
+    },
+    {
+      "name": "question",
+      "description": "Further information is requested",
+      "color": "d876e3"
+    },
+    {
+      "name": "wontfix",
+      "description": "This will not be worked on",
+      "color": "ffffff"
+    }
+  ],
+  "issues": [
+    {
+      "number": 1,
+      "id": "I_kwDOKULecs5xmShm",
+      "title": "Restricted joins?",
+      "url": "https://github.com/turt2live/ietf-mimi-policy/issues/1",
+      "state": "OPEN",
+      "author": "turt2live",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2023-09-20T23:57:15Z",
+      "updatedAt": "2023-09-20T23:57:15Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 2,
+      "id": "I_kwDOKULecs5xmVRD",
+      "title": "Non-user senders?",
+      "url": "https://github.com/turt2live/ietf-mimi-policy/issues/2",
+      "state": "OPEN",
+      "author": "turt2live",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "per https://github.com/matrix-org/matrix-spec-proposals/pull/4049",
+      "createdAt": "2023-09-21T00:14:44Z",
+      "updatedAt": "2023-09-21T00:14:44Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 3,
+      "id": "I_kwDOKULecs5xnZ_c",
+      "title": "Server ACLs?",
+      "url": "https://github.com/turt2live/ietf-mimi-policy/issues/3",
+      "state": "OPEN",
+      "author": "turt2live",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2023-09-21T05:44:44Z",
+      "updatedAt": "2023-09-21T05:44:44Z",
+      "closedAt": null,
+      "comments": []
+    }
+  ],
+  "pulls": []
+}
