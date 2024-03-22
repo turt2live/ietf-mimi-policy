@@ -42,48 +42,38 @@ informative:
 
 --- abstract
 
-The MIMI Policy Envelope describes a *policy control protocol* and
-*participation control protocol* for use in a room, applied at the user
-participation level, as described by {{!I-D.barnes-mimi-arch}}.
-
+This document specifies an authorization policy framework for the More Instant
+Messaging Interoperability (MIMI) working group's transport protocol. It makes
+use of a Role-Based Access Control (RBAC) mechanism to grant/deny permissions
+to users, clients, and servers.
 
 --- middle
 
 # Introduction
 
-The primary objective for the More Instant Messaging Interoperability (MIMI)
-working group is to specify the needed protocols to achieve interoperability
-among modern messaging providers. The protocols which make up the "MIMI stack"
-are described by {{!I-D.barnes-mimi-arch}}.
+This document relies on the concepts described by {{!I-D.barnes-mimi-arch}} and
+{{!I-D.ralston-mimi-protocol}}.
 
-In the stack are a policy control protocol and a participation control protocol.
-These two control protocols are described by this document, supported by
-**TODO(TR): Link to I-D.ralston-mimi-signaling**.
+Policy within MIMI defines who or what is allowed to take a certain action, and
+what the allowable actions are. Some examples include whether a given user is
+able to send messages or promote/demote other users within the room. This
+document outlines the minimum permissions required for interoperability, and how
+the Role-Based Access Control (RBAC) mechanism works.
 
-Policy control is handled through permissions, while participation is managed
-primarily through the rules governing `m.room.user`. Together, these control
-protocols create this policy document.
-
-When an action is impossible for a server to enforce, such as when a client
-operated by a user sends an encrypted instant message, the receiving clients
-are responsible for enforcing the remainder of the policy. This may mean, for
-example, decrypting a message but not rendering it due to a policy violation.
-
-The concepts of permissions and participation state for a user are deliberately
-separated in this policy document. A user's participation state might affect
-which permissions they can use, but a user's permissions do not change their
-participation in a room.
+Some actions are enforceable by the hub server or local follower server in a
+room, however other actions can only be handled by end clients. Whether a server
+can enforce the policy largely depends on the server's visibility of the message
+being checked: MLS Private Messages cannot be inspected, and therefore cannot
+have policy applied to them by the server. Such messages will need to be checked
+by the clients instead.
 
 # Conventions and Definitions
 
 {::boilerplate bcp14-tagged}
 
-Terms from {{!I-D.barnes-mimi-arch}} and {{!I-D.ralston-mimi-terminology}} are
-used throughout this document. {{!I-D.barnes-mimi-arch}} takes precedence where
-there's conflict.
-
-Terms from **TODO(TR): Link to I-D.ralston-mimi-signaling** are used throughout
-this document.
+Terms from {{!I-D.barnes-mimi-arch}}, {{!I-D.ralston-mimi-terminology}}, and
+{{!I-D.ralston-mimi-protocol}} are used throughout this document.
+{{!I-D.barnes-mimi-arch}} takes precedence where there's conflict.
 
 Other terms include:
 
