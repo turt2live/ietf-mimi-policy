@@ -1,6 +1,6 @@
 ---
-title: "MIMI Policy Envelope"
-abbrev: "MIMI Policy Envelope"
+title: "More Instant Messaging Interoperability (MIMI) Policy"
+abbrev: "MIMI Policy"
 category: std
 
 docname: draft-ralston-mimi-policy-latest
