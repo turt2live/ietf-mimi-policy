@@ -122,50 +122,6 @@ be welcomed in (invited) or declined (kicked).
 
 *Kicked*: Involuntary leave. The target and sender are not the same user.
 
-# Event Authorization
-
-When a hub server receives an event, and before it adds it to the room, it MUST
-ensure the event passes the policy for the room. In the case of this document,
-the server MUST ensure the following checks are performed:
-
-1. The event is correctly signed and hashed.
-2. The event's `authEvents` include the appropriate event types
-   ({{int-auth-selection}}).
-3. The `sender` has permission ({{int-calc-permissions}}) to send the event.
-4. Any event type-specific checks are performed, as described throughout this
-   document.
-
-## Auth Events Selection {#int-auth-selection}
-
-When a server is populating `authEvents`, it MUST include the event IDs for the
-following event types. These SHOULD be the most recent event IDs for the event
-types.
-
-Note: `m.room.create` MUST always have an empty `authEvents` array.
-
-* The `m.room.create` event.
-* The `m.room.user` event for the `sender`, if applicable.
-* The `m.room.role_map` event ({{int-permissions}}), if set.
-* The `m.room.role` events ({{int-permissions}}) assigned to the user `sender`,
-  if any.
-* If the event type is `m.room.user`:
-
-   * The target user's `m.room.user` event, if any.
-   * If the `participation` state is `join` or `invite`, the `m.room.join_rules`
-     event ({{int-ev-join-rules}}), if any.
-
-**TODO(TR): Restricted joins join_authorised_via_users_server?
-([GH issue](https://github.com/turt2live/ietf-mimi-policy/issues/1))**
-
-If an event is missing from `authEvents` but should have been included with the
-above selection algorithm, the event is rejected.
-
-If events not intended to be selected using the above algorithm above are
-included in `authEvents`, the event is rejected. This extends to events which
-aren't known or are malformed in `authEvents`.
-
-If an event uses non-current events in its `authEvents`, it is rejected.
-
 # Types of Senders
 
 **TODO(TR): Do we want to send as not-users?
