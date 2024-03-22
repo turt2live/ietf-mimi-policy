@@ -337,7 +337,7 @@ struct {
 } RolePermission;
 
       *TODO*: Determine which permissions are needed to fulfill
-      [I-D.ietf-mimi-content-format].
+      [I-D.ietf-mimi-content].
 
 4.4.  Role Changes
 
@@ -538,8 +538,12 @@ struct {
 
 8.2.  Informative References
 
-   [I-D.ietf-mimi-content-format]
-              "*** BROKEN REFERENCE ***".
+   [I-D.ietf-mimi-content]
+              Mahy, R., "More Instant Messaging Interoperability (MIMI)
+              message content", Work in Progress, Internet-Draft, draft-
+              ietf-mimi-content-02, 4 March 2024,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-mimi-
+              content-02>.
 
    [RFC8446]  Rescorla, E., "The Transport Layer Security (TLS) Protocol
               Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018,
