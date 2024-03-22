@@ -124,67 +124,50 @@ be welcomed in (invited) or declined (kicked).
 
 # Types of Senders
 
-**TODO(TR): Do we want to send as not-users?
-([GH issue](https://github.com/turt2live/ietf-mimi-policy/issues/2))**
-
-Currently this document only supports `sender` being a user ID.
+> **TODO**: Figure out non-user permission structures. https://github.com/turt2live/ietf-mimi-policy/issues/2
 
 # Permissions {#int-permissions}
 
-Rooms are capable of defining their own roles for grouping permissions to apply
-to users. These roles do not currently have aesthetic characteristics, such as
-a display name, badge color, or avatar.
+Groups of permissions are known as roles. These roles are then assigned to a
+user or server as needed. Permissions cannot be assigned without being part of a
+role.
 
-Roles are described by an `m.room.role` state event. The state key for the event
-is the "role ID", and is not intended to be human readable.
+Roles do not currently carry aesthetic characteristics, such as a name, badge
+color, or avatar.
 
-The content for the event has the following structure in TLS presentation
-language format ({{Section 3 of RFC8446}}):
+Roles, and their assignees, are persisted through the AppSync MLS extension.
+Changes are proposed with MLS Proposals, and confirmed with MLS Commits. This
+uses the `mimiRoomPolicy` `applicationId` defined by {{!I-D.ralston-mimi-protocol}}.
+
+> **TODO**: Define actual example/schema once AppSync is more reviewed by the MLS
+> working group. Initial indications are unclear if a diff or "irreducible" blob
+> is preferred.
+
+A role *notionally* looks like the following:
 
 ~~~
 enum {
-   // Iterated later in the document.
+   /* Iterated later in the document. */
 } Permission;
 
 struct {
    select (Permission) {
-      // cases defined later in the document.
+      /* cases defined later in the document. */
    } permission;
 } PermissionValue;
 
 struct {
-   PermissionValue permissions[];
-} MRoomRoleEventContent;
+   PermissionValue permissions<V>;
+   IdentifierUri assignees<V>;
+   int order;
+} Role;
 ~~~
 
-Users are assigned to roles using an `m.room.role_map` state event, with empty
-string for a state key. The content being as follows:
-
-~~~
-struct {
-   // The role's ID.
-   opaque roleId;
-
-   // The user IDs who are assigned this role.
-   opaque userIds[];
-
-   // The power level for the role. This is used in cases of tiebreak and to
-   // override permissions from another role.
-   uint32 order;
-} RoleConfig;
-
-struct {
-   RoleConfig roles[];
-} MRoomRoleMapEventContent;
-~~~
-
-Each role ID MUST only appear once in `MRoomRoleMapEventContent.roles`. Each
-`RoleConfig.order` MUST be distinct from all other entries. If either of these
-checks fail when a server receives the event, the event is rejected.
+`IdentifierUri` is as defined by {{Section 5.2 of !I-D.ralston-mimi-protocol}}.
 
 ## Calculating Permissions {#int-calc-permissions}
 
-A user's permissions is the sum of the permissions described by their assigned
+An entity's permissions is the sum of the permissions described by their assigned
 roles. When two roles define the same permission (but with different values),
 the higher `order` role takes precedence.
 
@@ -207,7 +190,7 @@ would be:
 * Permission B = true (takes Role C's value)
 * Permission C = false (defined by Role B, no conflict with Role C)
 
-These permissions are then used to define whether a user can "send" the event.
+These permissions are then used to define whether a user can perform the action.
 
 ## Effective Power Level {#int-effective-power}
 
@@ -230,9 +213,9 @@ The full definitions for `Permission` and `PermissionValue` in
 
 ~~~
 enum {
-   // Whether other users can be invited to the room by the role.
+   // Whether other users can be added to the room by the role.
    // Default: false.
-   invite(1),
+   add(1),
 
    // Whether other users can be kicked from the room by the role.
    // Default: false.
@@ -247,14 +230,14 @@ enum {
    // Default: false.
    redact(4), // TODO(TR): Do we need this one?
 
-   // The event types the role is able to send.
-   // Default: None.
-   events(5),
-
    // The actions this role can take against roles. For example, adding or
    // removing permissions.
    // Default: None.
-   roles(6),
+   roles(5),
+
+   // Whether the assigned entities can send messages to the room.
+   // Default: true.
+   sendMessages(6), // TODO(TR): This likely needs breaking out.
 } Permission;
 
 struct {
@@ -263,8 +246,8 @@ struct {
       case kick: BooleanPermission;
       case ban: BooleanPermission;
       case redact: BooleanPermission;
-      case events: EventTypePermission;
       case roles: RolePermission;
+      case sendMessages: BooleanPermission;
    } permission;
 } PermissionValue;
 
@@ -274,20 +257,6 @@ struct {
 } BooleanPermission;
 
 struct {
-   // The event type being gated by a permission.
-   opaque eventType;
-
-   // When false, the permission to send the event is explicitly not granted.
-   byte granted;
-} EventTypePermissionRecord;
-
-struct {
-   // The event type restrictions. If there are duplicates, the lastmost entry
-   // takes priority.
-   EventTypePermissionRecord eventTypes[];
-} EventTypePermission;
-
-struct {
    // The role IDs that can be affected by this role. This includes adding,
    // removing, and changing permissions.
    // TODO(TR): We might want something more comprehensive.
@@ -295,24 +264,23 @@ struct {
 } RolePermission;
 ~~~
 
-## Event Sending Permissions
-
-The `sender` for an event MUST have permission ({{int-calc-permissions}}) to
-send that event type, unless the event type is `m.room.user`. User participation
-events are handled specifically in {{int-user-participation}}.
-
-The `sender` MUST also be in the joined state to send such events.
+> **TODO**: Determine which permissions are needed to fulfill {{?I-D.ietf-mimi-content-format}}.
 
 ## Role Changes
 
-**TODO(TR): I believe we need words to describe how to use the role permissions
-described above. Probably something using effective power levels and talking
-about what "add", "remove", and "change" actually mean.**
+> **TODO**: I believe we need words to describe how to use the role permissions
+> described above. Probably something using effective power levels and talking
+> about what "add", "remove", and "change" actually mean.
 
-**TODO(TR): We also need to specify that the creator has superuser permissions
-until a role is defined/assigned.**
+> **TODO**: We also need to specify that the creator has superuser permissions
+> until a role is defined/assigned.
 
 # User Participation {#int-user-participation}
+
+> **TODO**: Needs updating considering participation state changes are proposed
+> through AppSync now. The concepts around the rules of state changes still apply.
+
+> **TODO**: "Invite" likely needs swapping for "Add".
 
 User participation is tracked as `m.room.user` state events. The `content` for
 such an event has the following structure in TLS presentation language format
@@ -344,8 +312,7 @@ process.
 
 ## General Conditions
 
-**TODO(TR): This is where we'd put server ACLs.
-([GH issue](https://github.com/turt2live/ietf-mimi-policy/issues/3))**
+> **TODO**: This is where we'd put server ACLs - https://github.com/turt2live/ietf-mimi-policy/issues/3
 
 ## Invite Conditions
 
@@ -366,7 +333,7 @@ Otherwise, reject.
 The target and sender of a join MUST be the same.
 
 Whether a user can join without invite is dependent on the join rules
-({{int-ev-join-rules}}).
+({{int-join-rules}}).
 
 If the join rule is `invite` or `knock`, the user MUST already be in the joined
 or invite state.
@@ -379,7 +346,7 @@ Otherwise, reject.
 
 The target and sender of a knock MUST be the same.
 
-If the current join rule ({{int-ev-join-rules}}) for the room is `knock`, the
+If the current join rule ({{int-join-rules}}) for the room is `knock`, the
 user MUST NOT already be in the banned or joined state.
 
 Otherwise, reject.
@@ -428,11 +395,10 @@ to the effective power level check.
 
 Otherwise, reject.
 
-## `m.room.join_rules` {#int-ev-join-rules}
+## Join Rules {#int-join-rules}
 
-**State key**: Empty string.
-
-**Content**:
+> **TODO**: Convert to an AppSync-style policy flag. It will need an associated
+> permission.
 
 ~~~
 enum {
@@ -445,74 +411,15 @@ struct {
   // The current join rule for the room. Defaults to `invite` if no join rules
   // event is in the room.
   JoinRule rule;
-} MRoomJoinRulesEventContent;
+} PolicyJoinRule;
 ~~~
 
-**Redaction considerations**: `rule` under `content` is protected from
-redaction.
+# Security Considerations
 
-# Event/History Visibility
-
-Unless otherwise specified by the event type, non-state events MUST NOT be sent
-to a user's client if the history visibility rules prohibit it. State events
-are always visible to clients.
-
-When a server is fetching events it is missing to build history, the returned
-events are redacted unless the server has at least one user which is able to
-see the event under the history visibility rules. The server must then further
-filter the events before sending them to clients.
-
-History visibility rules are defined by `m.room.history_visibility`
-({{int-ev-history-viz}}), and can only affect future events. Events sent before
-the history visibility rule change are not retroactively affected.
-
-Taking into consideration the `m.room.history_visibility` event that is current
-at the time an event was sent, a user's visibility of a that event is described
-as:
-
-* If the visibility rule was `world`, show.
-* If the user was in the joined state, show.
-* If the visibility rule was `shared` and the user was in the joined state at
-  any point after the event was sent, show.
-* If the user was in the invited state, and the visibility rule was `invited`,
-  show.
-* Otherwise, don't show.
-
-## `m.room.history_visibility` {#int-ev-history-viz}
-
-**State key**: Empty string.
-
-**Content**:
-
-~~~
-enum {
-   invited,
-   joined,
-   shared,
-   world,
-} Visibility;
-
-struct {
-  // The current join rule for the room. Defaults to `shared` if no history
-  // visibility event is present in the room.
-  Visibility visibility;
-} MRoomHistoryVisibilityEventContent;
-~~~
-
-**Redaction considerations**: `visibility` under `content` is protected from
-redaction.
+> **TODO**: Verbosely describe the security considerations throughout the doc.
 
 # IANA Considerations
 
-This document as a whole makes up the `m.0` policy ID, as per
-**TODO(TR): Link to I-D.ralston-mimi-signaling**.
-
-This document's descriptions for the following event types are registered to the
-event types registry in **TODO(TR): Link to I-D.ralston-mimi-signaling**:
-
-* `m.room.role` ({{int-permissions}})
-* `m.room.role_map` ({{int-permissions}})
-* `m.room.join_rules` ({{int-ev-join-rules}})
-* `m.room.history_visibility` ({{int-ev-history-viz}})
+None.
 
 --- back
