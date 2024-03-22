@@ -264,7 +264,7 @@ struct {
 } RolePermission;
 ~~~
 
-> **TODO**: Determine which permissions are needed to fulfill {{?I-D.ietf-mimi-content-format}}.
+> **TODO**: Determine which permissions are needed to fulfill {{?I-D.ietf-mimi-content}}.
 
 ## Role Changes
 
