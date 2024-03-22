@@ -5,7 +5,7 @@
 More Instant Messaging Interoperability                       T. Ralston
 Internet-Draft                                                M. Hodgson
 Intended status: Standards Track        The Matrix.org Foundation C.I.C.
-Expires: 24 March 2024                                 21 September 2023
+Expires: 23 September 2024                                 22 March 2024
 
 
                           MIMI Policy Envelope
@@ -13,9 +13,11 @@ Expires: 24 March 2024                                 21 September 2023
 
 Abstract
 
-   The MIMI Policy Envelope describes a _policy control protocol_ and
-   _participation control protocol_ for use in a room, applied at the
-   user participation level, as described by [I-D.barnes-mimi-arch].
+   This document specifies an authorization policy framework for the
+   More Instant Messaging Interoperability (MIMI) working group's
+   transport protocol.  It makes use of a Role-Based Access Control
+   (RBAC) mechanism to grant/deny permissions to users, clients, and
+   servers.
 
 About This Document
 
@@ -49,11 +51,11 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 24 March 2024.
+   This Internet-Draft will expire on 23 September 2024.
 
 Copyright Notice
 
-   Copyright (c) 2023 IETF Trust and the persons identified as the
+   Copyright (c) 2024 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
 
    This document is subject to BCP 78 and the IETF Trust's Legal
@@ -71,60 +73,48 @@ Table of Contents
    2.  Conventions and Definitions
      2.1.  Permissions Definitions
      2.2.  Participation Definitions
-   3.  Event Authorization
-     3.1.  Auth Events Selection
-   4.  Types of Senders
-   5.  Permissions
-     5.1.  Calculating Permissions
-     5.2.  Effective Power Level
-     5.3.  List of Permissions
-     5.4.  Event Sending Permissions
-     5.5.  Role Changes
-   6.  User Participation
-     6.1.  General Conditions
-     6.2.  Invite Conditions
-     6.3.  Join Conditions
-     6.4.  Knock Conditions
-     6.5.  Ban Conditions
-     6.6.  Leave Conditions
-       6.6.1.  Voluntary
-       6.6.2.  Kicks
-     6.7.  m.room.join_rules
-   7.  Event/History Visibility
-     7.1.  m.room.history_visibility
-   8.  IANA Considerations
-   9.  References
-     9.1.  Normative References
-     9.2.  Informative References
+   3.  Types of Senders
+   4.  Permissions
+     4.1.  Calculating Permissions
+     4.2.  Effective Power Level
+     4.3.  List of Permissions
+     4.4.  Role Changes
+   5.  User Participation
+     5.1.  General Conditions
+     5.2.  Invite Conditions
+     5.3.  Join Conditions
+     5.4.  Knock Conditions
+     5.5.  Ban Conditions
+     5.6.  Leave Conditions
+       5.6.1.  Voluntary
+       5.6.2.  Kicks
+     5.7.  Join Rules
+   6.  Security Considerations
+   7.  IANA Considerations
+   8.  References
+     8.1.  Normative References
+     8.2.  Informative References
    Authors' Addresses
 
 1.  Introduction
 
-   The primary objective for the More Instant Messaging Interoperability
-   (MIMI) working group is to specify the needed protocols to achieve
-   interoperability among modern messaging providers.  The protocols
-   which make up the "MIMI stack" are described by
-   [I-D.barnes-mimi-arch].
+   This document relies on the concepts described by
+   [I-D.barnes-mimi-arch] and [I-D.ralston-mimi-protocol].
 
-   In the stack are a policy control protocol and a participation
-   control protocol.  These two control protocols are described by this
-   document, supported by *TODO(TR): Link to I-D.ralston-mimi-
-   signaling*.
+   Policy within MIMI defines who or what is allowed to take a certain
+   action, and what the allowable actions are.  Some examples include
+   whether a given user is able to send messages or promote/demote other
+   users within the room.  This document outlines the minimum
+   permissions required for interoperability, and how the Role-Based
+   Access Control (RBAC) mechanism works.
 
-   Policy control is handled through permissions, while participation is
-   managed primarily through the rules governing m.room.user.  Together,
-   these control protocols create this policy document.
-
-   When an action is impossible for a server to enforce, such as when a
-   client operated by a user sends an encrypted instant message, the
-   receiving clients are responsible for enforcing the remainder of the
-   policy.  This may mean, for example, decrypting a message but not
-   rendering it due to a policy violation.
-
-   The concepts of permissions and participation state for a user are
-   deliberately separated in this policy document.  A user's
-   participation state might affect which permissions they can use, but
-   a user's permissions do not change their participation in a room.
+   Some actions are enforceable by the hub server or local follower
+   server in a room, however other actions can only be handled by end
+   clients.  Whether a server can enforce the policy largely depends on
+   the server's visibility of the message being checked: MLS Private
+   Messages cannot be inspected, and therefore cannot have policy
+   applied to them by the server.  Such messages will need to be checked
+   by the clients instead.
 
 2.  Conventions and Definitions
 
@@ -134,12 +124,9 @@ Table of Contents
    BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
    capitals, as shown here.
 
-   Terms from [I-D.barnes-mimi-arch] and [I-D.ralston-mimi-terminology]
-   are used throughout this document.  [I-D.barnes-mimi-arch] takes
-   precedence where there's conflict.
-
-   Terms from *TODO(TR): Link to I-D.ralston-mimi-signaling* are used
-   throughout this document.
+   Terms from [I-D.barnes-mimi-arch], [I-D.ralston-mimi-terminology],
+   and [I-D.ralston-mimi-protocol] are used throughout this document.
+   [I-D.barnes-mimi-arch] takes precedence where there's conflict.
 
    Other terms include:
 
@@ -194,123 +181,55 @@ Table of Contents
    _Kicked_: Involuntary leave.  The target and sender are not the same
    user.
 
-3.  Event Authorization
+3.  Types of Senders
 
-   When a hub server receives an event, and before it adds it to the
-   room, it MUST ensure the event passes the policy for the room.  In
-   the case of this document, the server MUST ensure the following
-   checks are performed:
+      *TODO*: Figure out non-user permission structures.
+      https://github.com/turt2live/ietf-mimi-policy/issues/2
 
-   1.  The event is correctly signed and hashed.
+4.  Permissions
 
-   2.  The event's authEvents include the appropriate event types
-       (Section 3.1).
+   Groups of permissions are known as roles.  These roles are then
+   assigned to a user or server as needed.  Permissions cannot be
+   assigned without being part of a role.
 
-   3.  The sender has permission (Section 5.1) to send the event.
+   Roles do not currently carry aesthetic characteristics, such as a
+   name, badge color, or avatar.
 
-   4.  Any event type-specific checks are performed, as described
-       throughout this document.
+   Roles, and their assignees, are persisted through the AppSync MLS
+   extension.  Changes are proposed with MLS Proposals, and confirmed
+   with MLS Commits.  This uses the mimiRoomPolicy applicationId defined
+   by [I-D.ralston-mimi-protocol].
 
-3.1.  Auth Events Selection
+      *TODO*: Define actual example/schema once AppSync is more reviewed
+      by the MLS working group.  Initial indications are unclear if a
+      diff or "irreducible" blob is preferred.
 
-   When a server is populating authEvents, it MUST include the event IDs
-   for the following event types.  These SHOULD be the most recent event
-   IDs for the event types.
-
-   Note: m.room.create MUST always have an empty authEvents array.
-
-   *  The m.room.create event.
-
-   *  The m.room.user event for the sender, if applicable.
-
-   *  The m.room.role_map event (Section 5), if set.
-
-   *  The m.room.role events (Section 5) assigned to the user sender, if
-      any.
-
-   *  If the event type is m.room.user:
-
-      -  The target user's m.room.user event, if any.
-
-      -  If the participation state is join or invite, the
-         m.room.join_rules event (Section 6.7), if any.
-
-   *TODO(TR): Restricted joins join_authorised_via_users_server?  (GH
-   issue (https://github.com/turt2live/ietf-mimi-policy/issues/1))*
-
-   If an event is missing from authEvents but should have been included
-   with the above selection algorithm, the event is rejected.
-
-   If events not intended to be selected using the above algorithm above
-   are included in authEvents, the event is rejected.  This extends to
-   events which aren't known or are malformed in authEvents.
-
-   If an event uses non-current events in its authEvents, it is
-   rejected.
-
-4.  Types of Senders
-
-   *TODO(TR): Do we want to send as not-users?  (GH issue
-   (https://github.com/turt2live/ietf-mimi-policy/issues/2))*
-
-   Currently this document only supports sender being a user ID.
-
-5.  Permissions
-
-   Rooms are capable of defining their own roles for grouping
-   permissions to apply to users.  These roles do not currently have
-   aesthetic characteristics, such as a display name, badge color, or
-   avatar.
-
-   Roles are described by an m.room.role state event.  The state key for
-   the event is the "role ID", and is not intended to be human readable.
-
-   The content for the event has the following structure in TLS
-   presentation language format (Section 3 of [RFC8446]):
+   A role _notionally_ looks like the following:
 
    enum {
-      // Iterated later in the document.
+      /* Iterated later in the document. */
    } Permission;
 
    struct {
       select (Permission) {
-         // cases defined later in the document.
+         /* cases defined later in the document. */
       } permission;
    } PermissionValue;
 
    struct {
-      PermissionValue permissions[];
-   } MRoomRoleEventContent;
+      PermissionValue permissions<V>;
+      IdentifierUri assignees<V>;
+      int order;
+   } Role;
 
-   Users are assigned to roles using an m.room.role_map state event,
-   with empty string for a state key.  The content being as follows:
+   IdentifierUri is as defined by Section 5.2 of
+   [I-D.ralston-mimi-protocol].
 
-struct {
-   // The role's ID.
-   opaque roleId;
+4.1.  Calculating Permissions
 
-   // The user IDs who are assigned this role.
-   opaque userIds[];
-
-   // The power level for the role. This is used in cases of tiebreak and to
-   // override permissions from another role.
-   uint32 order;
-} RoleConfig;
-
-struct {
-   RoleConfig roles[];
-} MRoomRoleMapEventContent;
-
-   Each role ID MUST only appear once in MRoomRoleMapEventContent.roles.
-   Each RoleConfig.order MUST be distinct from all other entries.  If
-   either of these checks fail when a server receives the event, the
-   event is rejected.
-
-5.1.  Calculating Permissions
-
-   A user's permissions is the sum of the permissions described by their
-   assigned roles.  When two roles define the same permission (but with
-   different values), the higher order role takes precedence.
+   An entity's permissions is the sum of the permissions described by
+   their assigned roles.  When two roles define the same permission (but
+   with different values), the higher order role takes precedence.
 
    For example, if given the following role structure...
 
@@ -341,17 +260,17 @@ struct {
 
    *  Permission C = false (defined by Role B, no conflict with Role C)
 
-   These permissions are then used to define whether a user can "send"
-   the event.
+   These permissions are then used to define whether a user can perform
+   the action.
 
-5.2.  Effective Power Level
+4.2.  Effective Power Level
 
    In some cases it is required to know the "power level" for a user to
    solve tiebreaks.  The power level of a user is the highest order role
    they are assigned with the desired permission set, regardless of
    value for that permission.
 
-   Using the example from Section 5.1, a user with all three roles would
+   Using the example from Section 4.1, a user with all three roles would
    have the following effective power levels for each permission in
    question:
 
@@ -361,15 +280,15 @@ struct {
 
    *  Permission C = 3
 
-5.3.  List of Permissions
+4.3.  List of Permissions
 
-   The full definitions for Permission and PermissionValue in Section 5
+   The full definitions for Permission and PermissionValue in Section 4
    is:
 
 enum {
-   // Whether other users can be invited to the room by the role.
+   // Whether other users can be added to the room by the role.
    // Default: false.
-   invite(1),
+   add(1),
 
    // Whether other users can be kicked from the room by the role.
    // Default: false.
@@ -384,14 +303,14 @@ enum {
    // Default: false.
    redact(4), // TODO(TR): Do we need this one?
 
-   // The event types the role is able to send.
-   // Default: None.
-   events(5),
-
    // The actions this role can take against roles. For example, adding or
    // removing permissions.
    // Default: None.
-   roles(6),
+   roles(5),
+
+   // Whether the assigned entities can send messages to the room.
+   // Default: true.
+   sendMessages(6), // TODO(TR): This likely needs breaking out.
 } Permission;
 
 struct {
@@ -400,8 +319,8 @@ struct {
       case kick: BooleanPermission;
       case ban: BooleanPermission;
       case redact: BooleanPermission;
-      case events: EventTypePermission;
       case roles: RolePermission;
+      case sendMessages: BooleanPermission;
    } permission;
 } PermissionValue;
 
@@ -411,45 +330,32 @@ struct {
 } BooleanPermission;
 
 struct {
-   // The event type being gated by a permission.
-   opaque eventType;
-
-   // When false, the permission to send the event is explicitly not granted.
-   byte granted;
-} EventTypePermissionRecord;
-
-struct {
-   // The event type restrictions. If there are duplicates, the lastmost entry
-   // takes priority.
-   EventTypePermissionRecord eventTypes[];
-} EventTypePermission;
-
-struct {
    // The role IDs that can be affected by this role. This includes adding,
    // removing, and changing permissions.
    // TODO(TR): We might want something more comprehensive.
    opaque affectRoleId[];
 } RolePermission;
 
-5.4.  Event Sending Permissions
+      *TODO*: Determine which permissions are needed to fulfill
+      [I-D.ietf-mimi-content-format].
 
-   The sender for an event MUST have permission (Section 5.1) to send
-   that event type, unless the event type is m.room.user.  User
-   participation events are handled specifically in Section 6.
+4.4.  Role Changes
 
-   The sender MUST also be in the joined state to send such events.
+      *TODO*: I believe we need words to describe how to use the role
+      permissions described above.  Probably something using effective
+      power levels and talking about what "add", "remove", and "change"
+      actually mean.
 
-5.5.  Role Changes
+      *TODO*: We also need to specify that the creator has superuser
+      permissions until a role is defined/assigned.
 
-   *TODO(TR): I believe we need words to describe how to use the role
-   permissions described above.  Probably something using effective
-   power levels and talking about what "add", "remove", and "change"
-   actually mean.*
+5.  User Participation
 
-   *TODO(TR): We also need to specify that the creator has superuser
-   permissions until a role is defined/assigned.*
+      *TODO*: Needs updating considering participation state changes are
+      proposed through AppSync now.  The concepts around the rules of
+      state changes still apply.
 
-6.  User Participation
+      *TODO*: "Invite" likely needs swapping for "Add".
 
    User participation is tracked as m.room.user state events.  The
    content for such an event has the following structure in TLS
@@ -477,12 +383,12 @@ struct {
    therefore users) in sending the appropriate participation events
    until they are able complete the join process.
 
-6.1.  General Conditions
+5.1.  General Conditions
 
-   *TODO(TR): This is where we'd put server ACLs.  (GH issue
-   (https://github.com/turt2live/ietf-mimi-policy/issues/3))*
+      *TODO*: This is where we'd put server ACLs -
+      https://github.com/turt2live/ietf-mimi-policy/issues/3
 
-6.2.  Invite Conditions
+5.2.  Invite Conditions
 
    The target user for an invite MUST:
 
@@ -494,16 +400,16 @@ struct {
 
    *  Already be in the joined state.
 
-   *  Have permission (Section 5.1) to invite users.
+   *  Have permission (Section 4.1) to invite users.
 
    Otherwise, reject.
 
-6.3.  Join Conditions
+5.3.  Join Conditions
 
    The target and sender of a join MUST be the same.
 
    Whether a user can join without invite is dependent on the join rules
-   (Section 6.7).
+   (Section 5.7).
 
    If the join rule is invite or knock, the user MUST already be in the
    joined or invite state.
@@ -513,28 +419,28 @@ struct {
 
    Otherwise, reject.
 
-6.4.  Knock Conditions
+5.4.  Knock Conditions
 
    The target and sender of a knock MUST be the same.
 
-   If the current join rule (Section 6.7) for the room is knock, the
+   If the current join rule (Section 5.7) for the room is knock, the
    user MUST NOT already be in the banned or joined state.
 
    Otherwise, reject.
 
-6.5.  Ban Conditions
+5.5.  Ban Conditions
 
    The sender for a ban MUST:
 
    *  Already be in the joined state.
 
-   *  Have permission (Section 5.1) to ban users.
+   *  Have permission (Section 4.1) to ban users.
 
    Otherwise, reject.
 
    Note that a ban implies kick.
 
-6.6.  Leave Conditions
+5.6.  Leave Conditions
 
    Leaves in a room come in two varieties: voluntary and kicks.
    Voluntary leaves are when the user no longer wishes to be an active
@@ -543,13 +449,13 @@ struct {
    When the target and sender of a leave is the same, it is a voluntary
    leave.
 
-6.6.1.  Voluntary
+5.6.1.  Voluntary
 
    The user MUST be in the invited, joined, or knocking state.
 
    Otherwise, reject.
 
-6.6.2.  Kicks
+5.6.2.  Kicks
 
    The target user for a kick MUST:
 
@@ -559,10 +465,10 @@ struct {
 
    *  Already be in the joined state.
 
-   *  Have permission (Section 5.1) to kick users.
+   *  Have permission (Section 4.1) to kick users.
 
    *  Have a higher (and NOT equal to) effective power level with
-      respect to the kick permission (Section 5.2) than the target user.
+      respect to the kick permission (Section 4.2) than the target user.
 
    If the target user is in the banned state, the sender requires
    permission to ban users instead (as to ban means to unban as well).
@@ -570,11 +476,10 @@ struct {
 
    Otherwise, reject.
 
-6.7.  m.room.join_rules
+5.7.  Join Rules
 
-   *State key*: Empty string.
-
-   *Content*:
+      *TODO*: Convert to an AppSync-style policy flag.  It will need an
+      associated permission.
 
 enum {
    invite,
@@ -586,98 +491,41 @@ struct {
   // The current join rule for the room. Defaults to `invite` if no join rules
   // event is in the room.
   JoinRule rule;
-} MRoomJoinRulesEventContent;
+} PolicyJoinRule;
 
-   *Redaction considerations*: rule under content is protected from
-   redaction.
+6.  Security Considerations
 
-7.  Event/History Visibility
+      *TODO*: Verbosely describe the security considerations throughout
+      the doc.
 
-   Unless otherwise specified by the event type, non-state events MUST
-   NOT be sent to a user's client if the history visibility rules
-   prohibit it.  State events are always visible to clients.
+7.  IANA Considerations
 
-   When a server is fetching events it is missing to build history, the
-   returned events are redacted unless the server has at least one user
-   which is able to see the event under the history visibility rules.
-   The server must then further filter the events before sending them to
-   clients.
+   None.
 
-   History visibility rules are defined by m.room.history_visibility
-   (Section 7.1), and can only affect future events.  Events sent before
-   the history visibility rule change are not retroactively affected.
+8.  References
 
-   Taking into consideration the m.room.history_visibility event that is
-   current at the time an event was sent, a user's visibility of a that
-   event is described as:
-
-   *  If the visibility rule was world, show.
-
-   *  If the user was in the joined state, show.
-
-   *  If the visibility rule was shared and the user was in the joined
-      state at any point after the event was sent, show.
-
-   *  If the user was in the invited state, and the visibility rule was
-      invited, show.
-
-   *  Otherwise, don't show.
-
-7.1.  m.room.history_visibility
-
-   *State key*: Empty string.
-
-   *Content*:
-
-enum {
-   invited,
-   joined,
-   shared,
-   world,
-} Visibility;
-
-struct {
-  // The current join rule for the room. Defaults to `shared` if no history
-  // visibility event is present in the room.
-  Visibility visibility;
-} MRoomHistoryVisibilityEventContent;
-
-   *Redaction considerations*: visibility under content is protected
-   from redaction.
-
-8.  IANA Considerations
-
-   This document as a whole makes up the m.0 policy ID, as per
-   *TODO(TR): Link to I-D.ralston-mimi-signaling*.
-
-   This document's descriptions for the following event types are
-   registered to the event types registry in *TODO(TR): Link to I-
-   D.ralston-mimi-signaling*:
-
-   *  m.room.role (Section 5)
-
-   *  m.room.role_map (Section 5)
-
-   *  m.room.join_rules (Section 6.7)
-
-   *  m.room.history_visibility (Section 7.1)
-
-9.  References
-
-9.1.  Normative References
+8.1.  Normative References
 
    [I-D.barnes-mimi-arch]
               Barnes, R., "An Architecture for More Instant Messaging
               Interoperability (MIMI)", Work in Progress, Internet-
-              Draft, draft-barnes-mimi-arch-00, 29 August 2023,
+              Draft, draft-barnes-mimi-arch-03, 4 March 2024,
               <https://datatracker.ietf.org/doc/html/draft-barnes-mimi-
-              arch-00>.
+              arch-03>.
+
+   [I-D.ralston-mimi-protocol]
+              Barnes, R., Hodgson, M., Kohbrok, K., Mahy, R., Ralston,
+              T., and R. Robert, "More Instant Messaging
+              Interoperability (MIMI) using HTTPS and MLS", Work in
+              Progress, Internet-Draft, draft-ralston-mimi-protocol-02,
+              4 March 2024, <https://datatracker.ietf.org/doc/html/
+              draft-ralston-mimi-protocol-02>.
 
    [I-D.ralston-mimi-terminology]
               Ralston, T., "MIMI Terminology", Work in Progress,
-              Internet-Draft, draft-ralston-mimi-terminology-02, 10 July
-              2023, <https://datatracker.ietf.org/doc/html/draft-
-              ralston-mimi-terminology-02>.
+              Internet-Draft, draft-ralston-mimi-terminology-03, 23
+              October 2023, <https://datatracker.ietf.org/doc/html/
+              draft-ralston-mimi-terminology-03>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -688,7 +536,10 @@ struct {
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
 
-9.2.  Informative References
+8.2.  Informative References
+
+   [I-D.ietf-mimi-content-format]
+              "*** BROKEN REFERENCE ***".
 
    [RFC8446]  Rescorla, E., "The Transport Layer Security (TLS) Protocol
               Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018,
