@@ -1,0 +1,561 @@
+
+
+
+
+More Instant Messaging Interoperability                       T. Ralston
+Internet-Draft                                                M. Hodgson
+Intended status: Standards Track        The Matrix.org Foundation C.I.C.
+Expires: 23 September 2024                                 22 March 2024
+
+
+         More Instant Messaging Interoperability (MIMI) Policy
+                    draft-ralston-mimi-policy-latest
+
+Abstract
+
+   This document specifies an authorization policy framework for the
+   More Instant Messaging Interoperability (MIMI) working group's
+   transport protocol.  It makes use of a Role-Based Access Control
+   (RBAC) mechanism to grant/deny permissions to users, clients, and
+   servers.
+
+About This Document
+
+   This note is to be removed before publishing as an RFC.
+
+   The latest revision of this draft can be found at
+   https://turt2live.github.io/ietf-mimi-policy/draft-ralston-mimi-
+   policy.html.  Status information for this document may be found at
+   https://datatracker.ietf.org/doc/draft-ralston-mimi-policy/.
+
+   Discussion of this document takes place on the More Instant Messaging
+   Interoperability Working Group mailing list (mailto:mimi@ietf.org),
+   which is archived at https://mailarchive.ietf.org/arch/browse/mimi/.
+   Subscribe at https://www.ietf.org/mailman/listinfo/mimi/.
+
+   Source for this draft and an issue tracker can be found at
+   https://github.com/turt2live/ietf-mimi-policy.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 23 September 2024.
+
+Copyright Notice
+
+   Copyright (c) 2024 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction
+   2.  Conventions and Definitions
+     2.1.  Permissions Definitions
+     2.2.  Participation Definitions
+   3.  Types of Senders
+   4.  Permissions
+     4.1.  Calculating Permissions
+     4.2.  Effective Power Level
+     4.3.  List of Permissions
+     4.4.  Role Changes
+   5.  User Participation
+     5.1.  General Conditions
+     5.2.  Invite Conditions
+     5.3.  Join Conditions
+     5.4.  Knock Conditions
+     5.5.  Ban Conditions
+     5.6.  Leave Conditions
+       5.6.1.  Voluntary
+       5.6.2.  Kicks
+     5.7.  Join Rules
+   6.  Security Considerations
+   7.  IANA Considerations
+   8.  References
+     8.1.  Normative References
+     8.2.  Informative References
+   Authors' Addresses
+
+1.  Introduction
+
+   This document relies on the concepts described by
+   [I-D.barnes-mimi-arch] and [I-D.ralston-mimi-protocol].
+
+   Policy within MIMI defines who or what is allowed to take a certain
+   action, and what the allowable actions are.  Some examples include
+   whether a given user is able to send messages or promote/demote other
+   users within the room.  This document outlines the minimum
+   permissions required for interoperability, and how the Role-Based
+   Access Control (RBAC) mechanism works.
+
+   Some actions are enforceable by the hub server or local follower
+   server in a room, however other actions can only be handled by end
+   clients.  Whether a server can enforce the policy largely depends on
+   the server's visibility of the message being checked: MLS Private
+   Messages cannot be inspected, and therefore cannot have policy
+   applied to them by the server.  Such messages will need to be checked
+   by the clients instead.
+
+2.  Conventions and Definitions
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in
+   BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   Terms from [I-D.barnes-mimi-arch], [I-D.ralston-mimi-terminology],
+   and [I-D.ralston-mimi-protocol] are used throughout this document.
+   [I-D.barnes-mimi-arch] takes precedence where there's conflict.
+
+   Other terms include:
+
+   _Rejected_: The action being performed ceases to continue through the
+   remainder of the send/rendering steps.  For a hub server, this means
+   the event being sent is not added to the room and is not sent to any
+   other server.  For a client, this equates to not rendering or
+   respecting the action.
+
+   _Allowed_: The opposite of Rejected.  The action is expressly
+   permitted to occur.
+
+   _"Engaging with the room"_: The user is able to take some actions and
+   send messages in the room, provided the remainder of the policy
+   allows them to do that.  The encryption/security layer MAY further
+   restrict a user's ability to take action.  For example, the user
+   might need 1 or more clients to be able to successfully send a
+   message.
+
+2.1.  Permissions Definitions
+
+   _Action_: Something a user does in the context of a room.  For
+   example, invite another user or send a message to the room.
+
+   _Permission_: A flag which allows (or rejects) execution of an
+   action.
+
+   _Role_: A user-defined set of permissions.  Users are added to roles
+   to gain the included permissions.
+
+2.2.  Participation Definitions
+
+   _Target_: The user affected by a participation state.
+
+   _Sender_: The user affecting a target user with a participation
+   state.
+
+   _Invited_: The target is given the choice to accept the invite (join
+   the room) or decline (leave the room).
+
+   _Joined_: The target is capable of engaging with the room.
+
+   _Left_: The target has either voluntarily chosen to leave the room,
+   or has been removed with a kick.
+
+   _Banned_: The target is kicked and cannot be invited, joined, or
+   knock on the room until unbanned.
+
+   _Knocking_: The sender is requesting an invite into the room.  They
+   can either be welcomed in (invited) or declined (kicked).
+
+   _Kicked_: Involuntary leave.  The target and sender are not the same
+   user.
+
+3.  Types of Senders
+
+      *TODO*: Figure out non-user permission structures.
+      https://github.com/turt2live/ietf-mimi-policy/issues/2
+
+4.  Permissions
+
+   Groups of permissions are known as roles.  These roles are then
+   assigned to a user or server as needed.  Permissions cannot be
+   assigned without being part of a role.
+
+   Roles do not currently carry aesthetic characteristics, such as a
+   name, badge color, or avatar.
+
+   Roles, and their assignees, are persisted through the AppSync MLS
+   extension.  Changes are proposed with MLS Proposals, and confirmed
+   with MLS Commits.  This uses the mimiRoomPolicy applicationId defined
+   by [I-D.ralston-mimi-protocol].
+
+      *TODO*: Define actual example/schema once AppSync is more reviewed
+      by the MLS working group.  Initial indications are unclear if a
+      diff or "irreducible" blob is preferred.
+
+   A role _notionally_ looks like the following:
+
+   enum {
+      /* Iterated later in the document. */
+   } Permission;
+
+   struct {
+      select (Permission) {
+         /* cases defined later in the document. */
+      } permission;
+   } PermissionValue;
+
+   struct {
+      PermissionValue permissions<V>;
+      IdentifierUri assignees<V>;
+      int order;
+   } Role;
+
+   IdentifierUri is as defined by Section 5.2 of
+   [I-D.ralston-mimi-protocol].
+
+4.1.  Calculating Permissions
+
+   An entity's permissions is the sum of the permissions described by
+   their assigned roles.  When two roles define the same permission (but
+   with different values), the higher order role takes precedence.
+
+   For example, if given the following role structure...
+
+   *  Role A, order 1.
+
+      -  Permission A = true
+
+      -  Permission B = false
+
+   *  Role B, order 2.
+
+      -  Permission A = false
+
+      -  Permission C = false
+
+   *  Role C, order 3.
+
+      -  Permission B = true
+
+      -  Permission C = false
+
+   ... and a user assigned all three roles, the user's resolved set of
+   permissions would be:
+
+   *  Permission A = false (takes Role B's value)
+
+   *  Permission B = true (takes Role C's value)
+
+   *  Permission C = false (defined by Role B, no conflict with Role C)
+
+   These permissions are then used to define whether a user can perform
+   the action.
+
+4.2.  Effective Power Level
+
+   In some cases it is required to know the "power level" for a user to
+   solve tiebreaks.  The power level of a user is the highest order role
+   they are assigned with the desired permission set, regardless of
+   value for that permission.
+
+   Using the example from Section 4.1, a user with all three roles would
+   have the following effective power levels for each permission in
+   question:
+
+   *  Permission A = 2
+
+   *  Permission B = 3
+
+   *  Permission C = 3
+
+4.3.  List of Permissions
+
+   The full definitions for Permission and PermissionValue in Section 4
+   is:
+
+enum {
+   // Whether other users can be added to the room by the role.
+   // Default: false.
+   add(1),
+
+   // Whether other users can be kicked from the room by the role.
+   // Default: false.
+   kick(2),
+
+   // Whether other users can be banned from the room by the role.
+   // Default: false.
+   ban(3),
+
+   // Whether another user's events can be redacted by the role.
+   // Senders can always redact their own events regardless of this permission.
+   // Default: false.
+   redact(4), // TODO(TR): Do we need this one?
+
+   // The actions this role can take against roles. For example, adding or
+   // removing permissions.
+   // Default: None.
+   roles(5),
+
+   // Whether the assigned entities can send messages to the room.
+   // Default: true.
+   sendMessages(6), // TODO(TR): This likely needs breaking out.
+} Permission;
+
+struct {
+   select (Permission) {
+      case invite: BooleanPermission;
+      case kick: BooleanPermission;
+      case ban: BooleanPermission;
+      case redact: BooleanPermission;
+      case roles: RolePermission;
+      case sendMessages: BooleanPermission;
+   } permission;
+} PermissionValue;
+
+struct {
+   // When false, the permission is explicitly not granted.
+   byte granted;
+} BooleanPermission;
+
+struct {
+   // The role IDs that can be affected by this role. This includes adding,
+   // removing, and changing permissions.
+   // TODO(TR): We might want something more comprehensive.
+   opaque affectRoleId[];
+} RolePermission;
+
+      *TODO*: Determine which permissions are needed to fulfill
+      [I-D.ietf-mimi-content].
+
+4.4.  Role Changes
+
+      *TODO*: I believe we need words to describe how to use the role
+      permissions described above.  Probably something using effective
+      power levels and talking about what "add", "remove", and "change"
+      actually mean.
+
+      *TODO*: We also need to specify that the creator has superuser
+      permissions until a role is defined/assigned.
+
+5.  User Participation
+
+      *TODO*: Needs updating considering participation state changes are
+      proposed through AppSync now.  The concepts around the rules of
+      state changes still apply.
+
+      *TODO*: "Invite" likely needs swapping for "Add".
+
+   User participation is tracked as m.room.user state events.  The
+   content for such an event has the following structure in TLS
+   presentation language format (Section 3 of [RFC8446]):
+
+   enum {
+      invite,  // "Invited" state.
+      join,    // "Joined" state.
+      leave,   // "Left" state (including Kicked).
+      ban,     // "Banned" state.
+      knock    // "Knocking" state.
+   } ParticipationState;
+
+   struct {
+      ParticipationState participation;
+      opaque reason;  // optional reason for the participation state
+   } MRoomUserEventContent;
+
+   A user is considered to be "joined" to a room if they have a
+   participation state of join.  All servers with users in the joined
+   state are considered to be "in" the room.
+
+   Servers which are in the room can send events for their users
+   directly.  The signaling protocol is able to assist servers (and
+   therefore users) in sending the appropriate participation events
+   until they are able complete the join process.
+
+5.1.  General Conditions
+
+      *TODO*: This is where we'd put server ACLs -
+      https://github.com/turt2live/ietf-mimi-policy/issues/3
+
+5.2.  Invite Conditions
+
+   The target user for an invite MUST:
+
+   *  NOT already be in the banned state.
+
+   *  NOT already be in the joined state.
+
+   The sender for an invite MUST:
+
+   *  Already be in the joined state.
+
+   *  Have permission (Section 4.1) to invite users.
+
+   Otherwise, reject.
+
+5.3.  Join Conditions
+
+   The target and sender of a join MUST be the same.
+
+   Whether a user can join without invite is dependent on the join rules
+   (Section 5.7).
+
+   If the join rule is invite or knock, the user MUST already be in the
+   joined or invite state.
+
+   If the join rule is public, the user MUST NOT already be in the
+   banned state.
+
+   Otherwise, reject.
+
+5.4.  Knock Conditions
+
+   The target and sender of a knock MUST be the same.
+
+   If the current join rule (Section 5.7) for the room is knock, the
+   user MUST NOT already be in the banned or joined state.
+
+   Otherwise, reject.
+
+5.5.  Ban Conditions
+
+   The sender for a ban MUST:
+
+   *  Already be in the joined state.
+
+   *  Have permission (Section 4.1) to ban users.
+
+   Otherwise, reject.
+
+   Note that a ban implies kick.
+
+5.6.  Leave Conditions
+
+   Leaves in a room come in two varieties: voluntary and kicks.
+   Voluntary leaves are when the user no longer wishes to be an active
+   participant in the room.  A kick is done to remove a user forcefully.
+
+   When the target and sender of a leave is the same, it is a voluntary
+   leave.
+
+5.6.1.  Voluntary
+
+   The user MUST be in the invited, joined, or knocking state.
+
+   Otherwise, reject.
+
+5.6.2.  Kicks
+
+   The target user for a kick MUST:
+
+   *  Already be in the joined state.
+
+   The sender for a kick MUST:
+
+   *  Already be in the joined state.
+
+   *  Have permission (Section 4.1) to kick users.
+
+   *  Have a higher (and NOT equal to) effective power level with
+      respect to the kick permission (Section 4.2) than the target user.
+
+   If the target user is in the banned state, the sender requires
+   permission to ban users instead (as to ban means to unban as well).
+   This additionally extends to the effective power level check.
+
+   Otherwise, reject.
+
+5.7.  Join Rules
+
+      *TODO*: Convert to an AppSync-style policy flag.  It will need an
+      associated permission.
+
+enum {
+   invite,
+   knock,
+   public,
+} JoinRule;
+
+struct {
+  // The current join rule for the room. Defaults to `invite` if no join rules
+  // event is in the room.
+  JoinRule rule;
+} PolicyJoinRule;
+
+6.  Security Considerations
+
+      *TODO*: Verbosely describe the security considerations throughout
+      the doc.
+
+7.  IANA Considerations
+
+   None.
+
+8.  References
+
+8.1.  Normative References
+
+   [I-D.barnes-mimi-arch]
+              Barnes, R., "An Architecture for More Instant Messaging
+              Interoperability (MIMI)", Work in Progress, Internet-
+              Draft, draft-barnes-mimi-arch-03, 4 March 2024,
+              <https://datatracker.ietf.org/doc/html/draft-barnes-mimi-
+              arch-03>.
+
+   [I-D.ralston-mimi-protocol]
+              Barnes, R., Hodgson, M., Kohbrok, K., Mahy, R., Ralston,
+              T., and R. Robert, "More Instant Messaging
+              Interoperability (MIMI) using HTTPS and MLS", Work in
+              Progress, Internet-Draft, draft-ralston-mimi-protocol-02,
+              4 March 2024, <https://datatracker.ietf.org/doc/html/
+              draft-ralston-mimi-protocol-02>.
+
+   [I-D.ralston-mimi-terminology]
+              Ralston, T., "MIMI Terminology", Work in Progress,
+              Internet-Draft, draft-ralston-mimi-terminology-03, 23
+              October 2023, <https://datatracker.ietf.org/doc/html/
+              draft-ralston-mimi-terminology-03>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
+
+8.2.  Informative References
+
+   [I-D.ietf-mimi-content]
+              Mahy, R., "More Instant Messaging Interoperability (MIMI)
+              message content", Work in Progress, Internet-Draft, draft-
+              ietf-mimi-content-02, 4 March 2024,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-mimi-
+              content-02>.
+
+   [RFC8446]  Rescorla, E., "The Transport Layer Security (TLS) Protocol
+              Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018,
+              <https://www.rfc-editor.org/rfc/rfc8446>.
+
+Authors' Addresses
+
+   Travis Ralston
+   The Matrix.org Foundation C.I.C.
+   Email: travisr@matrix.org
+
+
+   Matthew Hodgson
+   The Matrix.org Foundation C.I.C.
+   Email: matthew@matrix.org
