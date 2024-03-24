@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2024-03-21T00:19:40.697201+00:00",
+  "timestamp": "2024-03-24T00:21:13.677639+00:00",
   "repo": "turt2live/ietf-mimi-policy",
   "labels": [
     {
@@ -78,9 +78,17 @@
       "labels": [],
       "body": "per https://github.com/matrix-org/matrix-spec-proposals/pull/4049",
       "createdAt": "2023-09-21T00:14:44Z",
-      "updatedAt": "2023-09-21T00:14:44Z",
+      "updatedAt": "2024-03-22T22:43:02Z",
       "closedAt": null,
-      "comments": []
+      "comments": [
+        {
+          "author": "turt2live",
+          "authorAssociation": "OWNER",
+          "body": "I believe we do want non-user senders, as the server may be able to help or assist in room functionality",
+          "createdAt": "2024-03-22T22:43:01Z",
+          "updatedAt": "2024-03-22T22:43:01Z"
+        }
+      ]
     },
     {
       "number": 3,
